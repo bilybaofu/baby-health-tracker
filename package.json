@@ -1,0 +1,65 @@
+{
+  "name": "baby-health-tracker",
+  "productName": "婴幼儿体检报告智能识别系统",
+  "version": "1.0.0",
+  "description": "基于WHO标准的可爱卡通版婴幼儿健康管理系统",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder",
+    "dist-win": "electron-builder --win",
+    "dist-mac": "electron-builder --mac",
+    "dist-linux": "electron-builder --linux",
+    "dist-all": "electron-builder --win --mac --linux"
+  },
+  "build": {
+    "appId": "com.yourname.baby-health-tracker",
+    "productName": "婴幼儿体检系统",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "baby.html",
+      "style.css", 
+      "baby-tracker.js",
+      "main.js",
+      "package.json"
+    ],
+    "mac": {
+      "target": "dmg",
+      "icon": "build/icon.png",
+      "category": "public.app-category.healthcare-fitness"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable", 
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "build/icon.png",
+      "category": "Office"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "婴幼儿体检系统",
+      "installerLanguages": ["zh_CN", "en_US"]
+    }
+  },
+  "devDependencies": {
+    "electron": "^27.0.0",
+    "electron-builder": "^24.6.4"
+  }
+}
