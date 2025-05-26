@@ -1,1 +1,80 @@
+name: 🎀 构建婴幼儿体检系统
+
+on:
+  # 当推送到main分支时触发
+  push:
+    branches: [ main ]
+  # 当创建Pull Request时触发  
+  pull_request:
+    branches: [ main ]
+  # 允许手动触发
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+
+    steps:
+    - name: 📥 检出代码
+      uses: actions/checkout@v4
+    
+    - name: 🟢 设置Node.js环境
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: 📦 安装依赖
+      run: |
+        npm ci
+        
+    - name: 🍎 构建macOS版本
+      if: matrix.os == 'macos-latest'
+      run: |
+        npm run dist-mac
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: 🪟 构建Windows版本
+      if: matrix.os == 'windows-latest'
+      run: |
+        npm run dist-win
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: 🐧 构建Linux版本
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        npm run dist-linux
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+    - name: 📤 上传构建产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: 婴幼儿体检系统-${{ matrix.os }}
+        path: |
+          dist/*.exe
+          dist/*.dmg
+          dist/*.AppImage
+          dist/*.deb
+          dist/*.rpm
+        retention-days: 30
+        
+    # 创建发布版本（仅在推送标签时）
+    - name: 🚀 创建发布版本
+      if: startsWith(github.ref, 'refs/tags/') && matrix.os == 'windows-latest'
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          dist/*.exe
+          dist/*.dmg  
+          dist/*.AppImage
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
