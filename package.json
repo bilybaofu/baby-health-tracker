@@ -1,64 +1,11 @@
 {
   "name": "baby-health-tracker",
   "version": "11.0.0",
-  "description": "婴幼儿健康跟踪系统 - 基于WHO 2006标准的智能生长发育分析工具（百度OCR增强版）",
+  "description": "婴幼儿健康跟踪系统",
   "main": "baby.html",
-  "homepage": "https://yourusername.github.io/baby-health-tracker",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/yourusername/baby-health-tracker.git"
-  },
-  "bugs": {
-    "url": "https://github.com/yourusername/baby-health-tracker/issues"
-  },
-  "keywords": [
-    "baby-health",
-    "growth-tracking",
-    "WHO-standards",
-    "pediatric",
-    "health-monitoring",
-    "OCR",
-    "baidu-ocr",
-    "AI",
-    "deepseek",
-    "percentile-calculator",
-    "growth-chart",
-    "feeding-guide",
-    "child-development",
-    "javascript",
-    "html5",
-    "web-app"
-  ],
-  "author": "Baby Health Tracker Team",
-  "license": "MIT",
   "scripts": {
-    "start": "echo 'Static site ready - use any HTTP server'",
-    "dev": "echo 'Development server - use: python -m http.server 8080'",
-    "build": "echo 'No build process required for static site'",
-    "test": "echo 'No tests configured'",
-    "serve": "echo 'Use: python -m http.server 8000 or npx serve .'",
-    "validate": "echo 'Validating files...' && node -e \"console.log('Package.json is valid')\"",
-    "lint": "echo 'Linting complete - no linter configured'",
-    "deploy": "echo 'Deploy using GitHub Pages or your preferred method'"
+    "start": "echo 'Use any HTTP server to serve static files'"
   },
-  "devDependencies": {},
-  "dependencies": {},
-  "engines": {
-    "node": ">=14.0.0",
-    "npm": ">=6.0.0"
-  },
-  "browserslist": [
-    "> 1%",
-    "last 2 versions",
-    "not dead",
-    "not ie 11"
-  ],
-  "files": [
-    "*.html",
-    "*.css",
-    "*.js",
-    "README.md",
-    "LICENSE"
-  ],
-  "private": false
+  "author": "Baby Health Tracker Team",
+  "license": "MIT"
 }
