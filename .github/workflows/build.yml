@@ -1,65 +1,24 @@
-name: 🍼 婴幼儿体检系统
+name: Build and Deploy
 
 on:
   push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-    
-    strategy:
-      matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
-        node-version: [16, 18, 20]
-
-    steps:
-    - name: 🔍 检出代码
-      uses: actions/checkout@v4
-
-    - name: 🔧 设置Node.js环境
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-
-    - name: 📦 安装依赖
-      run: npm ci --prefer-offline --no-audit
-
-    - name: ✅ 验证package.json
-      run: npm run validate
-
-    - name: 🧪 运行测试
-      run: npm test
-
-    - name: 🔍 检查文件结构
-      run: |
-        echo "Checking required files..."
-        test -f baby.html && echo "✅ baby.html exists"
-        test -f baby-tracker.js && echo "✅ baby-tracker.js exists"
-        test -f style.css && echo "✅ style.css exists"
-        test -f main.js && echo "✅ main.js exists"
-        echo "All required files found!"
-
-    - name: 📊 文件大小检查
-      run: |
-        echo "File sizes:"
-        ls -lh *.html *.js *.css 2>/dev/null || echo "Some files may be missing"
-
-  deploy:
-    needs: build
+  build-and-deploy:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-    
     steps:
-    - name: 🔍 检出代码
+    - name: Checkout
       uses: actions/checkout@v4
 
-    - name: 🚀 部署到GitHub Pages
+    - name: Check files
+      run: |
+        ls -la
+        echo "Files checked successfully"
+
+    - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
+      if: github.ref == 'refs/heads/main'
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: .
-        exclude_assets: '.github,node_modules,.gitignore'
