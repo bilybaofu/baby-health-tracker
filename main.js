@@ -1,285 +1,195 @@
-const { app, BrowserWindow, Menu, dialog, shell } = require('electron');
-const path = require('path');
+/**
+ * 婴幼儿健康跟踪系统 - 主入口文件
+ * 百度OCR增强版 v11.0
+ * 
+ * 主要功能：
+ * - 初始化应用程序
+ * - 检查浏览器兼容性
+ * - 设置全局错误处理
+ * - 加载必要的依赖项
+ */
 
-let mainWindow;
-
-function createWindow() {
-    mainWindow = new BrowserWindow({
-        width: 1400,
-        height: 900,
-        minWidth: 1000,
-        minHeight: 700,
-        webPreferences: {
-            nodeIntegration: false,
-            contextIsolation: true,
-            enableRemoteModule: false,
-            // 关键修改：允许网络访问和跨域
-            webSecurity: false,
-            allowRunningInsecureContent: true,
-            experimentalFeatures: true,
-            enableClipboardAccess: true,
-            // 新增：允许所有权限
-            permissions: ['camera', 'microphone', 'geolocation', 'notifications'],
-            // 新增：禁用同源策略
-            additionalArguments: [
-                '--disable-web-security',
-                '--disable-features=VizDisplayCompositor',
-                '--allow-running-insecure-content',
-                '--disable-same-origin-policy'
-            ]
+// 全局配置
+window.APP_CONFIG = {
+    name: '婴幼儿健康跟踪系统',
+    version: '11.0',
+    codename: 'BaiduOCR-Enhanced',
+    author: 'Baby Health Tracker Team',
+    buildDate: '2025-05-27',
+    
+    // API配置
+    apis: {
+        baidu: {
+            ocrEndpoint: 'https://aip.baidubce.com/rest/2.0/ocr/v1/accurate_basic',
+            tokenEndpoint: 'https://aip.baidubce.com/oauth/2.0/token'
         },
-        show: false,
-        titleBarStyle: 'default',
-        frame: true,
-        transparent: false,
-        resizable: true,
-        maximizable: true,
-        minimizable: true,
-        closable: true
-    });
+        deepseek: {
+            endpoint: 'https://api.deepseek.com/v1/chat/completions'
+        }
+    },
+    
+    // 功能开关
+    features: {
+        ocrEnabled: true,
+        aiEnabled: true,
+        exportEnabled: true,
+        chartEnabled: true
+    }
+};
 
-    mainWindow.loadFile('baby.html');
+// 浏览器兼容性检查
+function checkBrowserSupport() {
+    const features = {
+        localStorage: typeof Storage !== 'undefined',
+        fetch: typeof fetch !== 'undefined',
+        canvas: !!document.createElement('canvas').getContext,
+        fileReader: typeof FileReader !== 'undefined',
+        formData: typeof FormData !== 'undefined'
+    };
 
-    mainWindow.once('ready-to-show', () => {
-        mainWindow.show();
-    });
+    const unsupported = Object.keys(features).filter(key => !features[key]);
+    
+    if (unsupported.length > 0) {
+        console.warn('⚠️ 浏览器不支持以下功能:', unsupported);
+        showCompatibilityWarning(unsupported);
+        return false;
+    }
+    
+    console.log('✅ 浏览器兼容性检查通过');
+    return true;
+}
 
-    mainWindow.on('closed', function () {
-        mainWindow = null;
-    });
+// 显示兼容性警告
+function showCompatibilityWarning(unsupported) {
+    const warningDiv = document.createElement('div');
+    warningDiv.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(135deg, #ff6b6b 0%, #ff5252 100%);
+        color: white;
+        padding: 15px;
+        text-align: center;
+        z-index: 9999;
+        font-family: Arial, sans-serif;
+        font-size: 14px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    `;
+    
+    warningDiv.innerHTML = `
+        <strong>⚠️ 浏览器兼容性警告</strong><br>
+        您的浏览器不支持以下功能：${unsupported.join(', ')}<br>
+        建议使用最新版的 Chrome、Firefox、Safari 或 Edge 浏览器
+        <button onclick="this.parentElement.remove()" style="margin-left: 15px; padding: 5px 10px; border: none; border-radius: 3px; cursor: pointer;">关闭</button>
+    `;
+    
+    document.body.insertBefore(warningDiv, document.body.firstChild);
+}
 
-    mainWindow.setTitle('🎀 婴幼儿体检报告智能识别系统 v1.0');
-
-    mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-        shell.openExternal(url);
-        return { action: 'deny' };
-    });
-
-    // 新增：网络请求拦截和修改
-    mainWindow.webContents.session.webRequest.onBeforeSendHeaders((details, callback) => {
-        // 设置更真实的User-Agent
-        details.requestHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-        details.requestHeaders['Accept'] = '*/*';
-        details.requestHeaders['Accept-Language'] = 'zh-CN,zh;q=0.9,en;q=0.8';
-        details.requestHeaders['Cache-Control'] = 'no-cache';
-        details.requestHeaders['Pragma'] = 'no-cache';
+// 全局错误处理
+function setupErrorHandling() {
+    // 捕获未处理的Promise拒绝
+    window.addEventListener('unhandledrejection', function(event) {
+        console.error('🚨 未处理的Promise拒绝:', event.reason);
         
-        callback({ requestHeaders: details.requestHeaders });
-    });
-
-    // 新增：允许所有跨域请求
-    mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
-        const responseHeaders = details.responseHeaders || {};
-        
-        // 添加CORS头
-        responseHeaders['Access-Control-Allow-Origin'] = ['*'];
-        responseHeaders['Access-Control-Allow-Methods'] = ['GET, POST, PUT, DELETE, OPTIONS'];
-        responseHeaders['Access-Control-Allow-Headers'] = ['Content-Type, Authorization, X-Requested-With'];
-        responseHeaders['Access-Control-Allow-Credentials'] = ['true'];
-        
-        callback({ responseHeaders });
-    });
-
-    // 新增：网络错误处理
-    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
-        console.log('网络加载失败:', errorCode, errorDescription, validatedURL);
-    });
-
-    // 新增：控制台日志监听
-    mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
-        console.log(`控制台[${level}]: ${message}`);
-    });
-
-    // 新增：右键上下文菜单（包含粘贴功能）
-    mainWindow.webContents.on('context-menu', (event, params) => {
-        const contextMenu = Menu.buildFromTemplate([
-            { role: 'cut', label: '剪切', enabled: params.isEditable },
-            { role: 'copy', label: '复制', enabled: params.selectionText.length > 0 },
-            { role: 'paste', label: '粘贴', enabled: params.isEditable },
-            { type: 'separator' },
-            { role: 'selectall', label: '全选' },
-            { type: 'separator' },
-            { role: 'reload', label: '重新加载' },
-            { role: 'toggleDevTools', label: '开发者工具' }
-        ]);
-        
-        contextMenu.popup(mainWindow);
-    });
-
-    // 新增：页面加载完成后的初始化
-    mainWindow.webContents.once('dom-ready', () => {
-        console.log('页面DOM加载完成');
-        
-        // 注入网络检测脚本
-        mainWindow.webContents.executeJavaScript(`
-            console.log('开始检测网络连接...');
-            
-            // 检测网络连通性
-            function checkNetworkConnectivity() {
-                fetch('https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js', {
-                    method: 'HEAD',
-                    mode: 'no-cors'
-                }).then(() => {
-                    console.log('CDN连接正常');
-                }).catch(err => {
-                    console.log('CDN连接失败:', err);
-                });
+        // 如果是API相关错误，显示用户友好的提示
+        if (event.reason && typeof event.reason === 'string') {
+            if (event.reason.includes('API') || event.reason.includes('网络')) {
+                showErrorMessage('网络连接或API服务异常，请检查网络连接或稍后重试');
             }
-            
-            checkNetworkConnectivity();
-            
-            // 5秒后再次检测OCR库
-            setTimeout(() => {
-                if (typeof Tesseract !== 'undefined') {
-                    console.log('✅ OCR库加载成功');
-                } else {
-                    console.log('❌ OCR库仍未加载');
-                }
-            }, 5000);
-        `);
+        }
+        
+        // 防止浏览器默认的错误提示
+        event.preventDefault();
+    });
+
+    // 捕获JavaScript错误
+    window.addEventListener('error', function(event) {
+        console.error('🚨 JavaScript错误:', {
+            message: event.message,
+            filename: event.filename,
+            lineno: event.lineno,
+            colno: event.colno,
+            error: event.error
+        });
     });
 }
 
-function createMenu() {
-    const template = [
-        {
-            label: '文件',
-            submenu: [
-                {
-                    label: '导出数据',
-                    accelerator: 'CmdOrCtrl+E',
-                    click: () => {
-                        mainWindow.webContents.executeJavaScript('window.babyTracker && window.babyTracker.exportData()');
-                    }
-                },
-                {
-                    label: '导入数据',
-                    accelerator: 'CmdOrCtrl+I',
-                    click: () => {
-                        mainWindow.webContents.executeJavaScript('window.babyTracker && window.babyTracker.importData()');
-                    }
-                },
-                { type: 'separator' },
-                {
-                    label: '重新加载OCR',
-                    click: () => {
-                        mainWindow.webContents.executeJavaScript(`
-                            console.log('手动重新加载OCR...');
-                            if (window.babyTracker) {
-                                window.babyTracker.showMessage('🔄 正在重新加载OCR库...', 'info');
-                            }
-                            location.reload();
-                        `);
-                    }
-                },
-                { type: 'separator' },
-                {
-                    label: '退出',
-                    accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Ctrl+Q',
-                    click: () => {
-                        app.quit();
-                    }
-                }
-            ]
-        },
-        // 编辑菜单（包含复制粘贴）
-        {
-            label: '编辑',
-            submenu: [
-                { role: 'undo', label: '撤销' },
-                { role: 'redo', label: '重做' },
-                { type: 'separator' },
-                { role: 'cut', label: '剪切' },
-                { role: 'copy', label: '复制' },
-                { role: 'paste', label: '粘贴' },
-                { type: 'separator' },
-                { role: 'selectall', label: '全选' }
-            ]
-        },
-        {
-            label: '查看',
-            submenu: [
-                { role: 'reload', label: '重新加载' },
-                { role: 'forceReload', label: '强制重新加载' },
-                { role: 'toggleDevTools', label: '开发者工具' },
-                { type: 'separator' },
-                { role: 'resetZoom', label: '重置缩放' },
-                { role: 'zoomIn', label: '放大' },
-                { role: 'zoomOut', label: '缩小' },
-                { type: 'separator' },
-                { role: 'togglefullscreen', label: '全屏切换' }
-            ]
-        },
-        {
-            label: '网络',
-            submenu: [
-                {
-                    label: '检测OCR连接',
-                    click: () => {
-                        mainWindow.webContents.executeJavaScript(`
-                            console.log('检测OCR库状态...');
-                            if (typeof Tesseract !== 'undefined') {
-                                alert('✅ OCR库已加载成功！');
-                            } else {
-                                alert('❌ OCR库未加载，尝试重新加载页面');
-                            }
-                        `);
-                    }
-                },
-                {
-                    label: '清除缓存',
-                    click: () => {
-                        mainWindow.webContents.session.clearCache().then(() => {
-                            mainWindow.webContents.reload();
-                        });
-                    }
-                }
-            ]
-        },
-        {
-            label: '帮助',
-            submenu: [
-                {
-                    label: '关于',
-                    click: () => {
-                        dialog.showMessageBox(mainWindow, {
-                            type: 'info',
-                            title: '关于',
-                            message: '婴幼儿体检报告智能识别系统',
-                            detail: '版本: 1.0.2 - 网络优化版\n基于WHO 2006标准\n可爱卡通版\n\n© 2025',
-                            buttons: ['确定']
-                        });
-                    }
-                }
-            ]
-        }
+// 显示错误消息
+function showErrorMessage(message) {
+    if (window.babyTracker && window.babyTracker.showMessage) {
+        window.babyTracker.showMessage(message, 'error');
+    } else {
+        alert(message);
+    }
+}
+
+// 检查必要的依赖项
+function checkDependencies() {
+    const dependencies = [
+        { name: 'Chart.js', check: () => typeof Chart !== 'undefined' }
     ];
 
-    const menu = Menu.buildFromTemplate(template);
-    Menu.setApplicationMenu(menu);
+    const missing = dependencies.filter(dep => !dep.check());
+    
+    if (missing.length > 0) {
+        console.warn('⚠️ 缺少依赖项:', missing.map(d => d.name));
+        return false;
+    }
+    
+    console.log('✅ 依赖项检查通过');
+    return true;
 }
 
-// 新增：应用启动前的网络配置
-app.commandLine.appendSwitch('disable-web-security');
-app.commandLine.appendSwitch('disable-features', 'VizDisplayCompositor');
-app.commandLine.appendSwitch('allow-running-insecure-content');
-app.commandLine.appendSwitch('disable-same-origin-policy');
+// 性能监控
+function setupPerformanceMonitoring() {
+    if ('performance' in window) {
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                const perfData = performance.timing;
+                const loadTime = perfData.loadEventEnd - perfData.navigationStart;
+                console.log(`📊 页面加载时间: ${loadTime}ms`);
+                
+                if (loadTime > 3000) {
+                    console.warn('⚠️ 页面加载较慢，建议优化');
+                }
+            }, 0);
+        });
+    }
+}
 
-app.whenReady().then(() => {
-    createWindow();
-    createMenu();
+// 初始化应用程序
+function initializeApp() {
+    console.log(`🎀 正在初始化 ${window.APP_CONFIG.name} v${window.APP_CONFIG.version}`);
+    
+    // 检查浏览器支持
+    if (!checkBrowserSupport()) {
+        return;
+    }
+    
+    // 设置错误处理
+    setupErrorHandling();
+    
+    // 性能监控
+    setupPerformanceMonitoring();
+    
+    // 检查依赖项（延迟检查，因为可能还在加载）
+    setTimeout(() => {
+        checkDependencies();
+    }, 100);
+    
+    console.log('✅ 应用程序初始化完成');
+}
 
-    app.on('activate', function () {
-        if (BrowserWindow.getAllWindows().length === 0) createWindow();
-    });
-});
+// 页面加载时初始化
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+    initializeApp();
+}
 
-app.on('window-all-closed', function () {
-    if (process.platform !== 'darwin') app.quit();
-});
-
-// 新增：证书错误忽略（用于HTTPS请求）
-app.on('certificate-error', (event, webContents, url, error, certificate, callback) => {
-    event.preventDefault();
-    callback(true);
-});
+// 导出配置供其他模块使用
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = window.APP_CONFIG;
+}
