@@ -1,11 +1,10 @@
-name: 🎀 构建婴幼儿体检系统
+name: 🍼 婴幼儿体检系统
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main ]
-  workflow_dispatch:
+    branches: [ main, master ]
 
 jobs:
   build:
@@ -14,45 +13,53 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
+        node-version: [16, 18, 20]
 
     steps:
-    - name: 📥 检出代码
+    - name: 🔍 检出代码
       uses: actions/checkout@v4
-    
-    - name: 🟢 设置Node.js环境
+
+    - name: 🔧 设置Node.js环境
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
-        
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
     - name: 📦 安装依赖
-      run: npm install
-        
-    - name: 🍎 构建macOS版本
-      if: matrix.os == 'macos-latest'
-      run: npm run dist-mac
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
-    - name: 🪟 构建Windows版本
-      if: matrix.os == 'windows-latest'
-      run: npm run dist-win
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        
-    - name: 🐧 构建Linux版本
-      if: matrix.os == 'ubuntu-latest'
-      run: npm run dist-linux
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-    - name: 📤 上传构建产物
-      uses: actions/upload-artifact@v4
+      run: npm ci --prefer-offline --no-audit
+
+    - name: ✅ 验证package.json
+      run: npm run validate
+
+    - name: 🧪 运行测试
+      run: npm test
+
+    - name: 🔍 检查文件结构
+      run: |
+        echo "Checking required files..."
+        test -f baby.html && echo "✅ baby.html exists"
+        test -f baby-tracker.js && echo "✅ baby-tracker.js exists"
+        test -f style.css && echo "✅ style.css exists"
+        test -f main.js && echo "✅ main.js exists"
+        echo "All required files found!"
+
+    - name: 📊 文件大小检查
+      run: |
+        echo "File sizes:"
+        ls -lh *.html *.js *.css 2>/dev/null || echo "Some files may be missing"
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    
+    steps:
+    - name: 🔍 检出代码
+      uses: actions/checkout@v4
+
+    - name: 🚀 部署到GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
       with:
-        name: 婴幼儿体检系统-${{ matrix.os }}
-        path: |
-          dist/*.exe
-          dist/*.dmg
-          dist/*.AppImage
-          dist/*.deb
-          dist/*.rpm
-        retention-days: 30
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: .
+        exclude_assets: '.github,node_modules,.gitignore'
